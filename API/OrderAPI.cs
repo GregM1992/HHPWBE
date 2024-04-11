@@ -14,14 +14,65 @@ namespace HHPWBE.API
                 return db.Orders.ToList();
             });
 
-            app.MapGet("/orderItems", (HHPWBEDbContext db) => //get all orders with items (not necessary/ only for testing purposes)
+            app.MapGet("/orderWithType", (HHPWBEDbContext db) => //get all orders with orderType
             {
-                return db.Orders.Include(i => i.Items).ThenInclude(i => i.Item).ToList();
+                return db.Orders.Include(i => i.OrderType).ToList();
             });
 
-            app.MapGet("/orders/{orderId}", (HHPWBEDbContext db, int orderId) => //get single order with items by orderId
+            app.MapGet("/orderSubTotal/{id}", (HHPWBEDbContext db, int id) => //gets order subtotal
             {
-                return db.Orders.Include(i => i.Items).ThenInclude(z => z.Item).FirstOrDefault(o => o.Id == orderId);
+                var order = db.Orders
+                         .Include(order => order.Items)
+                         .ThenInclude(orderItem => orderItem.Item)
+                         .SingleOrDefault(order => order.Id == id);
+
+                return order.SubTotal;
+            });
+
+            app.MapGet("/orderTotal/{id}", (HHPWBEDbContext db, int id) => //gets order total
+            {
+                var order = db.Orders
+                         .Include(order => order.Items)
+                         .ThenInclude(orderItem => orderItem.Item)
+                         .SingleOrDefault(order => order.Id == id);
+
+                return order.Total;
+            });
+
+
+
+            app.MapGet("/orders/{orderId}", (HHPWBEDbContext db, int orderId) => //get single order with specific properties
+            {
+                return db.Orders.Where(order => order.Id == orderId).Select(order => new {
+                                                                                          OrderId = order.Id,
+                                                                                          CustomerName = order.CustomerName,
+                                                                                          CustomerPhone = order.CustomerPhone,
+
+                                                                                          Items = order.Items.Select(oi => new ItemDTO
+                                                                                         {
+                                                                                          Id = oi.Item.Id,
+                                                                                          OrderItemId = oi.Id,
+                                                                                          Name = oi.Item.Name,
+                                                                                          Price = oi.Item.Price,
+                                                                                         }).ToList()
+                                                                                         }).FirstOrDefault();
+                                                                                         });
+
+            app.MapGet("/orders/items/{orderId}", (HHPWBEDbContext db, int orderId) => // gets items in order without order info
+            {
+                var orderItems = db.OrderItem
+                    .Where(oi => oi.Order.Id == orderId)
+                    .Select(oi => new
+                    {
+                        OrderId = oi.Order.Id,
+                        Name = oi.Item.Name,
+                        OrderItemId = oi.Id,
+                        Price = oi.Item.Price,
+                        IsClosed = oi.Order.IsClosed
+                    })
+                    .ToList();
+
+                return orderItems;
             });
 
             app.MapPost("/orders", (HHPWBEDbContext db, CreateOrderDTO newOrder) => // create new order
@@ -31,7 +82,7 @@ namespace HHPWBE.API
                     CustomerName = newOrder.CustomerName,
                     CustomerEmail = newOrder.CustomerEmail,
                     CustomerPhone = newOrder.CustomerPhone,
-                    OrderType = newOrder.OrderType,
+                    OrderTypeId = newOrder.OrderTypeId,
                     DateCreated = DateTime.Now,
                     IsClosed = false,
                 };
@@ -45,15 +96,15 @@ namespace HHPWBE.API
                 var orderToClose = db.Orders.FirstOrDefault(o => o.Id == orderId);
                 if (orderToClose != null)
                 {
-                orderToClose.DateClosed = closedOrder.DateClosed;
-                orderToClose.IsClosed = true;
-                orderToClose.Tip = closedOrder.Tip;
-                db.SaveChanges();
-                return Results.Created();
+                    orderToClose.DateClosed = closedOrder.DateClosed;
+                    orderToClose.IsClosed = true;
+                    orderToClose.Tip = closedOrder.Tip;
+                    db.SaveChanges();
+                    return Results.Created();
                 }
                 else
                 {
-                return Results.NotFound();
+                    return Results.NotFound();
                 }
             });
 
@@ -62,9 +113,9 @@ namespace HHPWBE.API
                 var orderToDelete = db.Orders.FirstOrDefault(i => i.Id == orderId);
                 if (orderToDelete != null)
                 {
-                db.Orders.Remove(orderToDelete);
-                db.SaveChanges();
-                return Results.Ok();
+                    db.Orders.Remove(orderToDelete);
+                    db.SaveChanges();
+                    return Results.Ok();
                 }
                 else
                 {
@@ -80,14 +131,14 @@ namespace HHPWBE.API
                     orderToUpdate.CustomerName = updatedOrder.CustomerName;
                     orderToUpdate.CustomerEmail = updatedOrder.CustomerEmail;
                     orderToUpdate.CustomerPhone = updatedOrder.CustomerPhone;
-                 
-                    orderToUpdate.OrderType = updatedOrder.OrderType;
+
+                    orderToUpdate.OrderTypeId = updatedOrder.OrderType;
                     db.SaveChanges();
                     return Results.Ok();
                 }
                 else
                 {
-                    return Results.NotFound(); 
+                    return Results.NotFound();
                 }
             });
         }

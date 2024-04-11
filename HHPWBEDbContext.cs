@@ -24,8 +24,8 @@ public class HHPWBEDbContext : DbContext
         });
         modelBuilder.Entity<Order>().HasData(new Order[]
         {
-            new Order { Id = 1, CustomerName = "John Man", CustomerPhone = "612-343-2345", CustomerEmail = "verygood@eng.com", OrderType = 1, DateCreated = new DateTime(2024,04,05), DateClosed = null, IsClosed = false },
-            new Order { Id = 2, CustomerName = "Jeff Dude", CustomerPhone = "762-232-3234", CustomerEmail = "soCool@32.com", OrderType = 2, DateCreated = new DateTime(2024,04,04), DateClosed = new DateTime(2024,04,04),SubTotal = 20.00m, Tip = 5.00m, IsClosed = true },
+            new Order { Id = 1, CustomerName = "John Man", CustomerPhone = "612-343-2345", CustomerEmail = "verygood@eng.com", OrderTypeId = 1, DateCreated = new DateTime(2024,04,05), DateClosed = null, IsClosed = false },
+            new Order { Id = 2, CustomerName = "Jeff Dude", CustomerPhone = "762-232-3234", CustomerEmail = "soCool@32.com", OrderTypeId = 2, DateCreated = new DateTime(2024,04,04), DateClosed = new DateTime(2024,04,04), Tip = 5.00m, IsClosed = true },
         });
         modelBuilder.Entity<Item>().HasData(new Item[]
         {

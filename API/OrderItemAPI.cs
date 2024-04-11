@@ -43,6 +43,16 @@ namespace HHPWBE.API
                 return Results.Ok();
 
             });
+
+            app.MapDelete("/order/removeById/{orderItemId}", (HHPWBEDbContext db, int orderItemId) =>
+            {
+                OrderItem orderItem = db.OrderItem.FirstOrDefault(i => i.Id == orderItemId);
+
+                db.OrderItem.Remove(orderItem);
+                db.SaveChanges();
+                return Results.Ok();
+
+            });
         }
     }
 }
