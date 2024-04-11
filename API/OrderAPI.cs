@@ -19,15 +19,6 @@ namespace HHPWBE.API
                 return db.Orders.Include(i => i.OrderType).ToList();
             });
 
-            app.MapGet("/orderSubTotal/{id}", (HHPWBEDbContext db, int id) => //gets order subtotal
-            {
-                var order = db.Orders
-                         .Include(order => order.Items)
-                         .ThenInclude(orderItem => orderItem.Item)
-                         .SingleOrDefault(order => order.Id == id);
-
-                return order.SubTotal;
-            });
 
             app.MapGet("/orderTotal/{id}", (HHPWBEDbContext db, int id) => //gets order total
             {
@@ -36,12 +27,32 @@ namespace HHPWBE.API
                          .ThenInclude(orderItem => orderItem.Item)
                          .SingleOrDefault(order => order.Id == id);
 
-                return order.Total;
+
+              return new OrderTotalDTO 
+                {
+                    Total = order.Total,
+                    SubTotal = order.SubTotal,
+                    Tip = order.Tip,
+                };
+            });
+
+            app.MapGet("/orderStatus/{id}", (HHPWBEDbContext db, int id) =>
+            {
+                var order = db.Orders.FirstOrDefault(o => o.Id == id);
+
+        
+                    return new OrderStatusDTO
+                    {
+                        OrderStatus = order.IsClosed
+                    };
+                
+
             });
 
 
 
-            app.MapGet("/orders/{orderId}", (HHPWBEDbContext db, int orderId) => //get single order with specific properties
+
+           app.MapGet("/orders/{orderId}", (HHPWBEDbContext db, int orderId) => //get single order with specific properties
             {
                 return db.Orders.Where(order => order.Id == orderId).Select(order => new {
                                                                                           OrderId = order.Id,
@@ -108,12 +119,21 @@ namespace HHPWBE.API
                 }
             });
 
-            app.MapDelete("/orders/{orderId}", (HHPWBEDbContext db, int orderId) => // delete order
+            app.MapDelete("/orders/{orderId}", (HHPWBEDbContext db, int orderId) =>
             {
-                var orderToDelete = db.Orders.FirstOrDefault(i => i.Id == orderId);
+                var orderToDelete = db.Orders.Include(o => o.Items).FirstOrDefault(i => i.Id == orderId);
+
                 if (orderToDelete != null)
                 {
+                    // Remove order items
+                    foreach (var item in orderToDelete.Items)
+                    {
+                        db.OrderItem.Remove(item);
+                    }
+
+                    // Remove order
                     db.Orders.Remove(orderToDelete);
+
                     db.SaveChanges();
                     return Results.Ok();
                 }

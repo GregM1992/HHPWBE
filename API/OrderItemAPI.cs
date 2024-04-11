@@ -24,7 +24,7 @@ namespace HHPWBE.API
 
                 db.SaveChanges();
 
-                return Results.Ok();
+                return Results.Created($"/order/{orderItem.ItemId}",orderItem);
 
             });
 
