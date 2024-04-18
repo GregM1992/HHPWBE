@@ -111,7 +111,7 @@ namespace HHPWBE.API
                     orderToClose.IsClosed = true;
                     orderToClose.Tip = closedOrder.Tip;
                     db.SaveChanges();
-                    return Results.Created();
+                    return Results.Created($"/orders/{orderToClose.Id}", closedOrder);
                 }
                 else
                 {
@@ -161,6 +161,56 @@ namespace HHPWBE.API
                     return Results.NotFound();
                 }
             });
+
+            app.MapGet("/revenue", (HHPWBEDbContext db) =>
+
+            {
+                var listOfTotals = db.Orders.Where(o => o.IsClosed == true)
+                         .Include(order => order.Items)
+                         .ThenInclude(orderItem => orderItem.Item).Select(i => i.Total);
+                var listOfTips = db.Orders.Where(o => o.IsClosed == true)
+                         .Include(order => order.Items)
+                         .ThenInclude(orderItem => orderItem.Item).Select(i => i.Tip);
+                var listOfTotalsFromItems = db.Orders.Where(o => o.IsClosed == true)
+                         .Include(order => order.Items)
+                         .ThenInclude(orderItem => orderItem.Item).Select(i => i.SubTotal);
+                var listOfWalkins = db.Orders.Where(o => o.IsClosed == true).Where(o => o.OrderTypeId == 1).Select(o => o.OrderTypeId).ToList();
+                var listOfCallins = db.Orders.Where(o => o.IsClosed == true).Where(o => o.OrderTypeId == 2).Select(o => o.OrderTypeId).ToList();
+
+
+                decimal? total = 0;
+                decimal? totalTips = 0;
+                decimal? totalFromItems = 0;
+                int? totalCallins = listOfCallins.Count();
+                int? totalWalkins = listOfWalkins.Count();
+
+                foreach (decimal? item in listOfTotals)
+                {
+                    total += item;
+                }
+                foreach (decimal? item in listOfTips)
+                {
+                    totalTips += item;
+                }
+                foreach (decimal? item in listOfTotalsFromItems)
+                {
+                    totalFromItems += item;
+                }
+
+
+                RevenueDTO revenueDTO = new RevenueDTO();
+                {
+                    revenueDTO.TotalFromItems = totalFromItems;
+                    revenueDTO.Tips = totalTips;
+                    revenueDTO.Total = total;
+                    revenueDTO.WalkIns = totalWalkins;
+                    revenueDTO.CallIns = totalCallins;
+                }
+                return revenueDTO;
+
+
+            });
+
         }
     }
 }
