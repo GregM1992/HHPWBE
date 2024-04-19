@@ -19,6 +19,20 @@ namespace HHPWBE.API
                 return db.Orders.Include(i => i.OrderType).ToList();
             });
 
+            app.MapGet("/orderEditDetails/{id}", (HHPWBEDbContext db, int id) =>
+            {
+                var orderToUpdate = db.Orders.Include(o => o.OrderType).FirstOrDefault(o => o.Id == id);
+                return new OrderDTO
+                {
+                    id = id,
+                    customerName = orderToUpdate.CustomerName,
+                    customerEmail = orderToUpdate.CustomerEmail,
+                    customerPhone = orderToUpdate.CustomerPhone,
+                    orderTypeId = orderToUpdate.OrderTypeId,
+                    dateCreated = orderToUpdate.DateCreated,
+                };
+            });
+
 
             app.MapGet("/orderTotal/{id}", (HHPWBEDbContext db, int id) => //gets order total
             {
@@ -88,12 +102,14 @@ namespace HHPWBE.API
 
             app.MapPost("/orders", (HHPWBEDbContext db, CreateOrderDTO newOrder) => // create new order
             {
+                var orderTypeToApply = db.OrderTypes.FirstOrDefault(o => o.Id == newOrder.OrderTypeId);
+
                 Order orderToCreate = new()
                 {
                     CustomerName = newOrder.CustomerName,
                     CustomerEmail = newOrder.CustomerEmail,
                     CustomerPhone = newOrder.CustomerPhone,
-                    OrderTypeId = newOrder.OrderTypeId,
+                    OrderType = orderTypeToApply,
                     DateCreated = DateTime.Now,
                     IsClosed = false,
                 };
@@ -145,16 +161,18 @@ namespace HHPWBE.API
 
             app.MapPut("/orders/{orderId}/update", (HHPWBEDbContext db, int orderId, UpdateOrderDTO updatedOrder) =>
             {
-                var orderToUpdate = db.Orders.FirstOrDefault(o => o.Id == orderId);
+                var orderToUpdate = db.Orders.Include(o => o.OrderType).FirstOrDefault(o => o.Id == orderId);
+                var orderTypeToApply = db.OrderTypes.FirstOrDefault(o => o.Id == updatedOrder.OrderTypeId);
                 if (orderToUpdate != null)
                 {
+                    orderToUpdate.Id = orderId;
                     orderToUpdate.CustomerName = updatedOrder.CustomerName;
                     orderToUpdate.CustomerEmail = updatedOrder.CustomerEmail;
                     orderToUpdate.CustomerPhone = updatedOrder.CustomerPhone;
-
-                    orderToUpdate.OrderTypeId = updatedOrder.OrderType;
+                    orderToUpdate.DateCreated = updatedOrder.Created;
+                    orderToUpdate.OrderType = orderTypeToApply;
                     db.SaveChanges();
-                    return Results.Ok();
+                    return Results.Created($"/orders/{orderToUpdate.Id}", updatedOrder);
                 }
                 else
                 {
